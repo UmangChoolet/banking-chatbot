@@ -1,8 +1,8 @@
 """
 Embedder - Generates vector embeddings from text.
 
-Uses sentence-transformers locally.
-Falls back to lightweight embeddings on Render free tier.
+Uses sentence-transformers locally if enabled.
+Uses lightweight fallback embeddings on low-memory environments.
 """
 
 import logging
@@ -12,12 +12,15 @@ from typing import Optional
 
 logger = logging.getLogger(__name__)
 
+# IMPORTANT:
+# Keep True for Render free tier (512MB RAM)
+# Change to False if using a higher-memory server
+USE_LIGHTWEIGHT_EMBEDDER = True
+
 
 class Embedder:
     """
-    Wraps sentence-transformers for text embedding generation.
-    Falls back to a simple TF-IDF style if transformers
-    are unavailable or memory is constrained.
+    Embedding wrapper with automatic fallback support.
     """
 
     def __init__(self, model_name: str = "all-MiniLM-L6-v2"):
@@ -26,13 +29,14 @@ class Embedder:
         self._dimension = 384
 
     def load(self):
-        """Load embedding model with automatic fallback."""
+        """Load embedding model."""
 
         try:
-            # Detect Render environment
-            if os.getenv("RENDER"):
+
+            # Force lightweight embedder
+            if USE_LIGHTWEIGHT_EMBEDDER:
                 logger.warning(
-                    "Running on Render free tier → using lightweight fallback embedder"
+                    "Using lightweight fallback embedder"
                 )
 
                 self.model = FallbackEmbedder()
@@ -45,7 +49,6 @@ class Embedder:
                 f"Loading embedding model: {self.model_name}"
             )
 
-            # Disable XET storage issues
             os.environ["HF_HUB_DISABLE_XET"] = "1"
 
             self.model = SentenceTransformer(
@@ -57,12 +60,12 @@ class Embedder:
             )
 
             logger.info(
-                f"Embedding model loaded. Dimension: {self._dimension}"
+                f"Embedding loaded. Dimension: {self._dimension}"
             )
 
         except Exception as e:
             logger.warning(
-                f"Failed to load transformer model: {e}"
+                f"Error loading transformer: {e}"
             )
 
             logger.warning(
@@ -73,18 +76,20 @@ class Embedder:
             self._dimension = 384
 
     @property
-    def dimension(self) -> int:
+    def dimension(self):
         return self._dimension
 
-    def embed(self, text: str) -> np.ndarray:
-        """Embed a single text string."""
+    def embed(self, text: str):
 
         if self.model is None:
             raise RuntimeError(
-                "Embedder not loaded. Call load() first."
+                "Embedder not loaded"
             )
 
-        if isinstance(self.model, FallbackEmbedder):
+        if isinstance(
+            self.model,
+            FallbackEmbedder
+        ):
             return self.model.embed(text)
 
         embedding = self.model.encode(
@@ -92,23 +97,30 @@ class Embedder:
             normalize_embeddings=True
         )
 
-        return embedding[0].astype(np.float32)
+        return embedding[0].astype(
+            np.float32
+        )
 
     def embed_batch(
         self,
         texts: list[str],
         batch_size: int = 32
-    ) -> np.ndarray:
-        """Embed a batch of texts."""
+    ):
 
         if self.model is None:
             raise RuntimeError(
-                "Embedder not loaded. Call load() first."
+                "Embedder not loaded"
             )
 
-        if isinstance(self.model, FallbackEmbedder):
+        if isinstance(
+            self.model,
+            FallbackEmbedder
+        ):
             return np.array(
-                [self.model.embed(t) for t in texts],
+                [
+                    self.model.embed(t)
+                    for t in texts
+                ],
                 dtype=np.float32
             )
 
@@ -116,40 +128,45 @@ class Embedder:
             texts,
             batch_size=batch_size,
             normalize_embeddings=True,
-            show_progress_bar=len(texts) > 100,
+            show_progress_bar=False
         )
 
-        return embeddings.astype(np.float32)
+        return embeddings.astype(
+            np.float32
+        )
 
 
 class FallbackEmbedder:
-    """
-    Lightweight TF-IDF style fallback embedder.
 
-    Lower quality than transformer embeddings,
-    but works on low-memory environments.
-    """
-
-    def __init__(self, dimension: int = 384):
+    def __init__(
+        self,
+        dimension: int = 384
+    ):
         self.dimension = dimension
-        self._vocab: dict[str, int] = {}
-        self._projection: Optional[np.ndarray] = None
-        self._rng = np.random.RandomState(42)
+        self._vocab = {}
+        self._projection = None
+        self._rng = np.random.RandomState(
+            42
+        )
 
     def _get_projection(
         self,
-        vocab_size: int
-    ) -> np.ndarray:
+        vocab_size
+    ):
 
         if (
             self._projection is None
-            or self._projection.shape[0] != vocab_size
+            or self._projection.shape[0]
+            != vocab_size
         ):
+
             self._projection = (
                 self._rng.randn(
                     vocab_size,
                     self.dimension
-                ).astype(np.float32)
+                ).astype(
+                    np.float32
+                )
             )
 
             norms = np.linalg.norm(
@@ -168,8 +185,8 @@ class FallbackEmbedder:
 
     def _tokenize(
         self,
-        text: str
-    ) -> list[str]:
+        text
+    ):
 
         import re
 
@@ -180,8 +197,8 @@ class FallbackEmbedder:
 
     def embed(
         self,
-        text: str
-    ) -> np.ndarray:
+        text
+    ):
 
         tokens = self._tokenize(text)
 
@@ -197,7 +214,9 @@ class FallbackEmbedder:
                     self._vocab
                 )
 
-        vocab_size = len(self._vocab)
+        vocab_size = len(
+            self._vocab
+        )
 
         bow = np.zeros(
             vocab_size,
@@ -207,10 +226,11 @@ class FallbackEmbedder:
         for token in tokens:
             bow[
                 self._vocab[token]
-            ] += 1.0
+            ] += 1
 
         bow /= (
-            np.sum(bow) + 1e-8
+            np.sum(bow)
+            + 1e-8
         )
 
         proj = self._get_projection(
