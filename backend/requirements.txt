@@ -1,0 +1,32 @@
+# Banking Chatbot Backend - Python Dependencies
+
+# Web Framework
+fastapi==0.115.5
+uvicorn[standard]==0.32.1
+python-multipart==0.0.12
+pydantic==2.10.3
+
+# LLM Providers (install at least one)
+anthropic==0.40.0
+openai==1.58.1
+
+# Embeddings (free, local)
+sentence-transformers==3.3.1
+torch>=2.6.0  # Required by sentence-transformers
+
+# Vector Database
+faiss-cpu==1.9.0.post1
+
+# Document Processing
+pymupdf==1.25.1       # PDF parsing (PyMuPDF)
+pdfplumber==0.11.4    # PDF fallback
+python-docx==1.1.2    # DOCX support
+
+# Optional: Redis for session persistence
+redis==5.2.1
+
+# Utilities
+numpy>=2.0.0
+python-dotenv==1.0.1
+aiofiles==24.1.0
+httpx==0.28.1
