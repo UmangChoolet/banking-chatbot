@@ -218,8 +218,8 @@ cp backend/.env.example .env
 docker-compose up --build
 ```
 
-- Frontend: http://localhost:3000
-- Backend: http://localhost:8000
+- Frontend: https://banking-chatbot-frontend.onrender.com/
+- Backend: https://banking-chatbot-backend-0rri.onrender.com
 - API Docs: http://localhost:8000/docs
 
 ---
