@@ -1,13 +1,20 @@
 # FinBot – AI-Powered Banking Support Chatbot
 
-> **RAG-based conversational AI assistant** for banking customer support, built with FastAPI, React, FAISS, and Claude/GPT.
+> **RAG-based conversational AI assistant** for banking customer support, built with FastAPI, React, FAISS, and Groq LLM (Llama 3.1).
 
-[![CI/CD](https://github.com/yourusername/banking-chatbot/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/yourusername/banking-chatbot/actions)
+[![CI/CD](https://github.com/UmangChoolet/banking-chatbot/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/UmangChoolet/banking-chatbot/actions)
 ![Python](https://img.shields.io/badge/Python-3.11-blue)
 ![React](https://img.shields.io/badge/React-18-61dafb)
 ![License](https://img.shields.io/badge/License-MIT-green)
 
 ---
+
+## Live Demo
+
+- **Frontend:** https://banking-chatbot-frontend.onrender.com
+- **Backend API:** https://banking-chatbot-backend-0rri.onrender.com
+- **API Docs:** https://banking-chatbot-backend-0rri.onrender.com/docs
+- **GitHub:** https://github.com/UmangChoolet/banking-chatbot
 
 ## Table of Contents
 
@@ -33,7 +40,7 @@ FinBot is a production-ready banking support chatbot that uses **Retrieval-Augme
 2. Chunking and embedding them with `sentence-transformers`
 3. Storing embeddings in a **FAISS vector database**
 4. On each query: retrieving the most relevant chunks via **semantic similarity search**
-5. Generating context-aware responses via **Claude (Anthropic)** or OpenAI
+5. Generating context-aware responses via Groq LLM (Llama 3.1)
 
 ### Supported Query Types
 - Personal loans (rates, eligibility, EMI calculation)
@@ -80,8 +87,8 @@ FinBot is a production-ready banking support chatbot that uses **Retrieval-Augme
         ▼                           ▼
 ┌───────────────┐         ┌─────────────────────┐
 │  FAISS Vector │         │  LLM Provider        │
-│  Database     │         │  (Anthropic / OpenAI)│
-│  (Local Disk) │         │  Claude-3-Haiku      │
+│  Database     │         │  Groq API            │
+│  (Local Disk) │         │  Llama 3.1-8b-instant│
 └───────────────┘         └─────────────────────┘
 ```
 
@@ -134,7 +141,7 @@ Build Prompt:
   User: current message
     │
     ▼
-LLM.generate(messages) → Claude/GPT response
+LLM.generate(messages) → Groq LLM response
     │
     ▼
 Response + Source Attribution returned to client
@@ -150,7 +157,7 @@ Response + Source Attribution returned to client
 | Backend | FastAPI (Python) | Async, high performance, auto docs |
 | Embeddings | sentence-transformers | Free, local, high quality |
 | Vector DB | FAISS (faiss-cpu) | Fast cosine search, persistent |
-| LLM | Anthropic Claude | Accurate, reliable, affordable |
+| LLM | Groq (Llama 3.1) | Free tier, fast inference |
 | Session | In-memory / Redis | Conversation context retention |
 | Deployment | Render / Railway | Free tier, easy CI/CD |
 | CI/CD | GitHub Actions | Auto test + deploy on push |
@@ -162,11 +169,11 @@ Response + Source Attribution returned to client
 ### Prerequisites
 - Python 3.11+
 - Node.js 20+
-- Anthropic API key (get free credits at [anthropic.com](https://anthropic.com))
+- Groq API key (free at console.groq.com)
 
 ### 1. Clone the repo
 ```bash
-git clone https://github.com/yourusername/banking-chatbot.git
+git clone https://github.com/UmangChoolet/banking-chatbot.git
 cd banking-chatbot
 ```
 
@@ -183,7 +190,7 @@ pip install -r requirements.txt
 
 # Configure environment
 cp .env.example .env
-# Edit .env and add your ANTHROPIC_API_KEY
+# Edit .env and add your GROQ_API_KEY (as OPENAI_API_KEY)
 
 # Start backend (auto-ingests sample banking docs on first run)
 uvicorn app.main:app --reload --port 8000
@@ -213,7 +220,7 @@ Frontend at: **https://banking-chatbot-frontend.onrender.com/**
 ```bash
 # At project root
 cp backend/.env.example .env
-# Add ANTHROPIC_API_KEY to .env
+# Add OPENAI_API_KEY (Groq key) to .env
 
 docker-compose up --build
 ```
@@ -307,7 +314,7 @@ Health check with vector store stats.
    - Render auto-detects `render.yaml`
 
 3. **Set environment variables** in Render dashboard:
-   - `ANTHROPIC_API_KEY` → your key
+   - `OPENAI_API_KEY` → your Groq API key
    - All other vars are pre-configured in `render.yaml`
 
 4. **Deploy** → Both services deploy automatically
@@ -336,7 +343,7 @@ railway up
 # On your server
 git clone <your-repo>
 cd banking-chatbot
-echo "ANTHROPIC_API_KEY=sk-ant-..." > .env
+echo "OPENAI_API_KEY=your_groq_key" > .env
 docker-compose up -d
 ```
 
@@ -389,9 +396,9 @@ pytest tests/ --cov=app --cov-report=html
 
 ## Challenges & Solutions
 
-### 1. Free Embedding Without External APIs
-**Challenge:** OpenAI embeddings cost money; needed free, high-quality embeddings.
-**Solution:** Used `sentence-transformers` with `all-MiniLM-L6-v2` — 384-dim model that runs locally, free forever, and produces high-quality semantic embeddings.
+### 1. RAM Limit on Render Free Tier
+**Challenge:** Render free tier has 512MB RAM — sentence-transformers + PyTorch exceeds this.
+**Solution:** Built a lightweight TF-IDF based FallbackEmbedder using pure NumPy that works within the memory constraint.
 
 ### 2. Vector DB Persistence on Free Hosting
 **Challenge:** Render free tier has ephemeral filesystems.
@@ -404,6 +411,10 @@ pytest tests/ --cov=app --cov-report=html
 ### 4. Context Window for Long Documents
 **Challenge:** Large documents exceed LLM context windows.
 **Solution:** Chunking with overlap ensures important boundaries aren't cut off, and top-K retrieval sends only the most relevant passages.
+
+### 5. HuggingFace CDN Blocked on Local Network
+**Challenge:** The cas-bridge.xethub.hf.co CDN was blocked, preventing model download.
+**Solution:** Downloaded model.safetensors manually via mobile hotspot and placed it in the local models folder.
 
 ---
 
@@ -433,7 +444,7 @@ banking-chatbot/
 │   │   │   ├── document_processor.py  # PDF/TXT/DOCX → chunks
 │   │   │   ├── embedder.py      # sentence-transformers wrapper
 │   │   │   ├── vector_store.py  # FAISS + NumPy fallback
-│   │   │   ├── llm_client.py    # Anthropic/OpenAI client
+│   │   │   ├── llm_client.py    # Groq LLM client
 │   │   │   └── session_manager.py  # Conversation history
 │   │   └── api/
 │   │       ├── chat.py          # /chat, /chat/stream endpoints
