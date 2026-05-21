@@ -25,23 +25,21 @@ class Embedder:
         self._dimension = 384
 
     def load(self):
-        """Load the embedding model."""
-        try:
-            from sentence_transformers import SentenceTransformer
-            logger.info(f"Loading embedding model: {self.model_name}")
-            # Disable Xet storage to avoid CDN timeout issues
-            os.environ["HF_HUB_DISABLE_XET"] = "1"
-            # Use model name directly — downloads from HuggingFace if not cached
-            self.model = SentenceTransformer(self.model_name)
-            self._dimension = self.model.get_sentence_embedding_dimension()
-            logger.info(f"✅ Embedding model loaded. Dimension: {self._dimension}")
-        except ImportError:
-            logger.warning(
-                "sentence-transformers not installed. Using fallback embedder. "
-                "Install with: pip install sentence-transformers"
-            )
-            self.model = FallbackEmbedder()
-            self._dimension = 384
+    """Load the embedding model."""
+    try:
+        from sentence_transformers import SentenceTransformer
+        logger.info(f"Loading embedding model: {self.model_name}")
+        os.environ["HF_HUB_DISABLE_XET"] = "1"
+        # Use lightweight model for free tier (less RAM)
+        self.model = SentenceTransformer("paraphrase-MiniLM-L3-v2")
+        self._dimension = self.model.get_sentence_embedding_dimension()
+        logger.info(f"✅ Embedding model loaded. Dimension: {self._dimension}")
+    except ImportError:
+        logger.warning(
+            "sentence-transformers not installed. Using fallback embedder."
+        )
+        self.model = FallbackEmbedder()
+        self._dimension = 384
 
     @property
     def dimension(self) -> int:
