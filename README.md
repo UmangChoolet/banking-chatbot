@@ -189,7 +189,7 @@ cp .env.example .env
 uvicorn app.main:app --reload --port 8000
 ```
 
-Backend will be at: **http://localhost:8000**
+Backend will be at: **https://banking-chatbot-backend-0rri.onrender.com**
 API docs at: **http://localhost:8000/docs**
 
 ### 3. Frontend setup
@@ -207,7 +207,7 @@ cp .env.example .env.local
 npm run dev
 ```
 
-Frontend at: **http://localhost:3000**
+Frontend at: **https://banking-chatbot-frontend.onrender.com/**
 
 ### 4. Docker (Full Stack)
 ```bash
