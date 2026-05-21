@@ -6,6 +6,7 @@ Model: all-MiniLM-L6-v2 (384 dimensions, fast, high quality)
 """
 
 import logging
+import os
 import numpy as np
 from typing import Optional
 
@@ -28,7 +29,10 @@ class Embedder:
         try:
             from sentence_transformers import SentenceTransformer
             logger.info(f"Loading embedding model: {self.model_name}")
-            self.model = SentenceTransformer("./models/all-MiniLM-L6-v2")
+            # Disable Xet storage to avoid CDN timeout issues
+            os.environ["HF_HUB_DISABLE_XET"] = "1"
+            # Use model name directly — downloads from HuggingFace if not cached
+            self.model = SentenceTransformer(self.model_name)
             self._dimension = self.model.get_sentence_embedding_dimension()
             logger.info(f"✅ Embedding model loaded. Dimension: {self._dimension}")
         except ImportError:
@@ -82,7 +86,6 @@ class FallbackEmbedder:
     def _get_projection(self, vocab_size: int) -> np.ndarray:
         if self._projection is None or self._projection.shape[0] != vocab_size:
             self._projection = self._rng.randn(vocab_size, self.dimension).astype(np.float32)
-            # Normalize columns
             norms = np.linalg.norm(self._projection, axis=0, keepdims=True)
             self._projection /= np.clip(norms, 1e-8, None)
         return self._projection
@@ -97,7 +100,6 @@ class FallbackEmbedder:
         if not tokens:
             return np.zeros(self.dimension, dtype=np.float32)
 
-        # Build/update vocab
         for token in tokens:
             if token not in self._vocab:
                 self._vocab[token] = len(self._vocab)
@@ -108,14 +110,11 @@ class FallbackEmbedder:
             if token in self._vocab:
                 bow[self._vocab[token]] += 1.0
 
-        # TF normalization
         bow /= (np.sum(bow) + 1e-8)
 
-        # Project to embedding dimension
         proj = self._get_projection(vocab_size)
         embedding = bow @ proj
 
-        # L2 normalize
         norm = np.linalg.norm(embedding)
         if norm > 1e-8:
             embedding /= norm
