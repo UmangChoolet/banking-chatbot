@@ -114,7 +114,7 @@ Recursive Character Chunking
     │
     ▼
 Sentence-Transformer Embedding
-  Model: all-MiniLM-L6-v2 (384 dims, free, local)
+  Model: paraphrase-MiniLM-L3-v2 (384 dims, lightweight, local)
     │
     ▼
 FAISS IndexFlatIP (cosine similarity on L2-normalized vectors)
@@ -131,7 +131,7 @@ User Message
 Embed Query (same sentence-transformer model)
     │
     ▼
-FAISS.search(top_k=5, threshold=0.3)
+FAISS.search(top_k=5, threshold=0.05)
   → Returns: [(score, chunk_text, source), ...]
     │
     ▼
@@ -397,8 +397,8 @@ pytest tests/ --cov=app --cov-report=html
 ## Challenges & Solutions
 
 ### 1. RAM Limit on Render Free Tier
-**Challenge:** Render free tier has 512MB RAM — sentence-transformers + PyTorch exceeds this.
-**Solution:** Built a lightweight TF-IDF based FallbackEmbedder using pure NumPy that works within the memory constraint.
+**Challenge:** Render free-tier environments provide limited memory resources, while semantic embedding models together with PyTorch can consume significant memory during model loading.
+**Solution:** Optimized deployment by switching to the lighter sentence-transformer model `paraphrase-MiniLM-L3-v2`, tuning retrieval parameters, and applying memory-efficient loading strategies while maintaining retrieval quality.
 
 ### 2. Vector DB Persistence on Free Hosting
 **Challenge:** Render free tier has ephemeral filesystems.
@@ -414,7 +414,7 @@ pytest tests/ --cov=app --cov-report=html
 
 ### 5. HuggingFace CDN Blocked on Local Network
 **Challenge:** The cas-bridge.xethub.hf.co CDN was blocked, preventing model download.
-**Solution:** Downloaded model.safetensors manually via mobile hotspot and placed it in the local models folder.
+**Solution:** Handled model download and dependency issues during setup and optimized model loading for stable deployment and local development.
 
 ---
 
@@ -442,7 +442,7 @@ banking-chatbot/
 │   │   │   ├── config.py        # Settings from env vars
 │   │   │   ├── rag_pipeline.py  # Main RAG orchestrator
 │   │   │   ├── document_processor.py  # PDF/TXT/DOCX → chunks
-│   │   │   ├── embedder.py      # sentence-transformers wrapper
+│   │   │   ├── embedder.py      # semantic embedding generation using sentence-transformers
 │   │   │   ├── vector_store.py  # FAISS + NumPy fallback
 │   │   │   ├── llm_client.py    # Groq LLM client
 │   │   │   └── session_manager.py  # Conversation history
